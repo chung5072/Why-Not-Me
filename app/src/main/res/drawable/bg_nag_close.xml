@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 작성일: 2026-09-24. overlay_actions.xml 닫기 버튼의 원형 배경. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/nag_surface_variant" />
+</shape>

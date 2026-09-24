@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24
+    말풍선 배경. 둥근 모서리 + 자주색(nag_purple).
+    색을 "삐짐" 느낌에 맞춰 자주색으로 잡은 건 res/values/colors.xml 주석 참고.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/nag_accent" />
+    <corners android:radius="16dp" />
+</shape>

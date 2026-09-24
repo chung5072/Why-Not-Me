@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24
+
+    [이 파일의 목표]
+    앱이 필요로 하는 특수 권한 4종(사용정보 접근, 다른 앱 위에 표시, 알림, 배터리 최적화 제외)과
+    NagService(포그라운드 서비스)의 실행 조건을 선언한다.
+
+    [직접 연결]
+    - NagService: 아래 <service> 태그로 선언된 실제 서비스 클래스 (service/NagService.kt)
+    - MainActivity: core/Permissions.kt의 각 권한 체크 함수가 여기 선언된 권한을 대상으로 검사한다
+
+    [간접 연결]
+    - detect/ForegroundAppDetector.kt: PACKAGE_USAGE_STATS 권한이 있어야 UsageStatsManager.queryEvents()가
+      빈 리스트가 아닌 실제 데이터를 반환한다. 이 매니페스트 선언만으로는 권한이 켜지지 않고,
+      사용자가 설정 화면에서 수동으로 켜야 한다 (특수 권한이라 런타임 다이얼로그가 없음).
+
+    [동작 과정]
+    1. PACKAGE_USAGE_STATS: 시스템이 보호하는 권한이라 앱이 요청 다이얼로그를 띄울 수 없다.
+       설정 > 사용정보 접근 화면으로 사용자를 보내는 수밖에 없다 (tools:ignore로 lint 경고 억제).
+    2. SYSTEM_ALERT_WINDOW: 오버레이 표시용. Settings.canDrawOverlays()로 상태 확인, 마찬가지로
+       설정 화면 이동 방식.
+    3. POST_NOTIFICATIONS: API 33(Android 13)부터 런타임 권한. 이것만 유일하게 앱 내에서
+       권한 다이얼로그로 요청 가능하다.
+    4. FOREGROUND_SERVICE / FOREGROUND_SERVICE_SPECIAL_USE: API 34(Android 14)부터 포그라운드
+       서비스는 타입을 선언해야 한다. 이 앱은 시스템이 정의한 기존 타입(location, camera 등)
+       어디에도 안 맞아서 specialUse를 쓰고, 아래 <property> 태그로 용도를 설명해야 한다.
+       (Play 심사에서 이 설명 문구를 본다)
+    5. REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: 배터리 최적화 제외를 요청하는 시스템 다이얼로그를
+       띄우기 위한 권한. 삼성 등 일부 제조사는 이게 있어도 자체 절전 기능으로 서비스를 죽일 수 있어서
+       6단계(하루 방치 테스트)에서 실측이 필요하다.
+    6. <queries>: API 30(Android 11)부터 다른 앱 목록 조회가 기본 차단된다. 나중에 미사용 앱을
+       찾으려면(UnusedAppRepository, 아직 미구현) 실행 가능한(런처에 뜨는) 앱 목록이 필요하므로
+       MAIN/LAUNCHER 인텐트 필터를 미리 선언해둔다.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".NagApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.WhyNotMe">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.WhyNotMe"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            foregroundServiceType="specialUse": location/camera/mediaPlayback 등 시스템이 정의한
+            기존 타입 중 이 서비스(포그라운드 앱을 2초마다 폴링해서 감지)에 맞는 게 없어서 선택.
+            아래 property는 Play 콘솔 심사자가 "이 서비스가 왜 특수 용도 포그라운드 서비스냐"를
+            판단하는 근거 문구다. 코드가 아니라 심사용 메타데이터.
+        -->
+        <service
+            android:name=".service.NagService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="사용자가 설정한 미사용 앱을 감지해 다른 앱 사용 중 오버레이 알림을 띄우기 위해 포그라운드 앱 전환을 지속적으로 모니터링합니다." />
+        </service>
+    </application>
+
+</manifest>

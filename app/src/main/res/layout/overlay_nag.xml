@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24 (좌/우 도킹에 따라 말풍선이 반대쪽에 붙도록 가로 배치로 재구성)
+
+    [목표] 세로로 [말풍선]-[꼬리]-[아이콘] 쌓던 구조를 가로 배치로 바꿨다. 아이콘이 화면
+    왼쪽 끝에 붙으면 말풍선이 그 오른쪽에, 오른쪽 끝에 붙으면 말풍선이 그 왼쪽에 오도록
+    OverlayPresenter.kt가 런타임에 자식 순서를 바꾼다 — XML 자체는 "아이콘이 왼쪽" 기본
+    배치만 담고, 오른쪽 도킹일 때는 코드에서 아이콘을 뒤로 옮기고 꼬리/말풍선 순서도 뒤집는다.
+
+    [직접 연결] overlay/OverlayPresenter.kt:
+    - overlayRoot: 전체 그룹(가로 LinearLayout). 등장 애니메이션의 대상.
+    - overlayIcon: 캐릭터. 기본은 root의 첫 번째 자식(왼쪽).
+    - overlayBubbleGroup: 말풍선+꼬리 묶음(가로 LinearLayout). 기본은 [꼬리(아이콘 쪽을 가리킴)]
+      다음에 [말풍선 텍스트] 순서. 오른쪽 도킹일 때는 이 안의 순서도 [말풍선]-[꼬리]로 뒤집힌다.
+    - overlayTail: 기본은 아래쪽을 가리키던 삼각형을 코드에서 rotation으로 왼쪽/오른쪽을
+      가리키게 돌린다.
+
+    [간접 연결] bg_nag_bubble.xml(말풍선 배경), ic_bubble_tail.xml(꼬리 삼각형, 기본은
+    아래쪽을 가리키는 모양이라 여기선 항상 rotation을 90도 단위로 돌려서 쓴다).
+
+    아이콘에는 일부러 배경 드로어블을 안 둔다. 예전엔 bg_nag_icon_circle(원형 배경 + 분홍
+    테두리)을 썼는데, 앱 아이콘이 그 원 안에 딱 안 맞고 여백이 남아서 "아이콘 뒤로 분홍
+    테두리가 비친다"처럼 보인다는 피드백을 받고 뺐다 — 이제 앱 아이콘 그림 자체만 뜬다.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/overlayRoot"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+
+    <!-- 64dp: 원래 44dp였는데 "오버레이로 뜰 때 더 크게" 요청으로 키움. 배경 없이 아이콘
+         그림만 뜬다(원형 배경+테두리를 빼서 "뒤에 분홍색이 비친다"는 문제를 해결). -->
+    <ImageView
+        android:id="@+id/overlayIcon"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:id="@+id/overlayBubbleGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:alpha="0">
+
+        <ImageView
+            android:id="@+id/overlayTail"
+            android:layout_width="10dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="-1dp"
+            android:src="@drawable/ic_bubble_tail"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/overlayMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_nag_bubble"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
+            android:maxWidth="200dp"
+            android:textColor="@color/nag_on_accent"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

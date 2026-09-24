@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 작성일: 2026-09-24. overlay_actions.xml 안 앱 아이콘 자리의 둥근 사각 배경. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/nag_surface_variant" />
+    <corners android:radius="12dp" />
+</shape>

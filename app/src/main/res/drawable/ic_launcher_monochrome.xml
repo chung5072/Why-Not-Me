@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24. Android 13+ "테마 아이콘"(바탕화면 아이콘을 시스템 강조색으로 단색
+    표시하는 기능) 전용 레이어. mipmap-anydpi/ic_launcher.xml의 <monochrome>이 이 파일을
+    가리켜야 한다 — 예전엔 기본 로봇 모양(ic_launcher_foreground.xml)을 그대로 가리키고
+    있어서, 사용자 폰 테마색(분홍 계열)으로 물든 로봇 모양이 "바탕에 분홍색이 비친다"처럼
+    보였던 원인이었다. 이 레이어는 단색(알파만 의미 있음)으로 그리는 게 규칙이라 전부
+    #FFFFFFFF로 채운다 — 실제 표시 색은 시스템이 입힌다.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M30,28 L78,28 A6,6 0 0,1 84,34 L84,66 A6,6 0 0,1 78,72 L34,72 L30,72 A6,6 0 0,1 24,66 L24,34 A6,6 0 0,1 30,28 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M34,72 L46,72 L30,88 Z" />
+</vector>

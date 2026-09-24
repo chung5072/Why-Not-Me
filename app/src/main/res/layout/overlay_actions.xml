@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24
+
+    [목표] overlay_nag.xml(작은 말풍선)을 탭했을 때 대신 보여주는 확장 액션 카드.
+    claude.ai Design 아티팩트의 BubbleActions 화면을 View로 옮긴 것 — Compose 화면으로
+    옮기지 않은 이유는 이 카드도 여전히 "다른 앱 위에 떠 있는 오버레이"라서다. Activity를
+    열면 사용자가 보던 화면을 완전히 떠나게 되므로, 오버레이인 채로 액션만 늘렸다.
+
+    [직접 연결] overlay/OverlayPresenter.kt의 showActions()가 inflate해서 각 id를 채우고
+    버튼 클릭 리스너를 단다.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_nag_card"
+    android:padding="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <ImageView
+            android:id="@+id/actionsIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_nag_icon"
+            android:padding="8dp"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/actionsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/actionsSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#B7ADC4"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/actionsClose"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_nag_close"
+            android:contentDescription="@null"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:scaleType="centerInside"
+            android:padding="6dp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/actionOpen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_nag_bubble"
+        android:text="지금 열어보기"
+        android:textAllCaps="false"
+        android:textColor="@color/nag_on_accent"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/actionMuteToday"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_nag_secondary"
+        android:text="오늘은 그만 묻기"
+        android:textAllCaps="false"
+        android:textColor="@color/white" />
+
+    <Button
+        android:id="@+id/actionExclude"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_nag_secondary"
+        android:text="이 앱 완전히 제외하기"
+        android:textAllCaps="false"
+        android:textColor="@color/white" />
+
+</LinearLayout>

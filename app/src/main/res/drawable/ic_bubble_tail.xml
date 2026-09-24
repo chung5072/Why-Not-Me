@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 작성일: 2026-09-24. 말풍선 아래쪽 꼬리(아이콘을 가리키는 삼각형). bg_nag_bubble과 같은 색. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="10dp"
+    android:viewportWidth="16"
+    android:viewportHeight="10">
+    <path
+        android:fillColor="@color/nag_accent"
+        android:pathData="M8,10 L0,0 L16,0 Z" />
+</vector>

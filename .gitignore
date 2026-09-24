@@ -1,0 +1,14 @@
+*.iml
+.gradle
+/local.properties
+local.properties
+.idea/
+.kotlin/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# 내부 개발 메모 — 원 기획/함정 목록. 공개 저장소에는 올리지 않음.
+CLAUDE.md

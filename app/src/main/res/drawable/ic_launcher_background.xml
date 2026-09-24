@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24. 원래 Android Studio 템플릿 기본값(초록 격자 배경 + 안드로이드 로봇
+    실루엣)이 그대로 남아있던 걸 앱 정체성에 맞게 새로 그렸다. 사용자가 "아이콘 바탕에 진한
+    분홍색이 살짝 보인다"고 한 건 사실 이 배경색 문제가 아니라, monochrome 레이어가 기본
+    로봇 모양을 그대로 가리키고 있어서(ic_launcher.xml 참고) Android 13+ 테마 아이콘 기능이
+    시스템 강조색(사용자 폰이 마침 분홍 계열)으로 그 로봇 모양을 물들여 보여준 것이었다.
+    이 파일 하나만으론 안 고쳐지고, ic_launcher_foreground.xml + ic_launcher_monochrome.xml을
+    같이 새로 그려야 해결된다.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/nag_bg"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>

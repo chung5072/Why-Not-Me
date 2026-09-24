@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    작성일: 2026-09-24 (2026-09-24 다크모드 "삐짐" 팔레트로 갱신)
+    nag_accent: claude.ai Design 아티팩트에서 확정한 다크모드 액센트(ui/theme/Color.kt의
+    NagAccent와 동일 값). 오버레이는 Compose 밖(WindowManager+XML)이라 색을 별도로 갖고 있다 —
+    바뀌면 두 곳(여기, Color.kt) 다 고쳐야 한다.
+    nag_purple 계열은 초기 라이트모드 기획 당시 후보였던 값으로, 참고용으로만 남겨둔다.
+-->
+<resources>
+    <color name="nag_accent">#FF5C82</color>
+    <color name="nag_on_accent">#1B0F17</color>
+    <color name="nag_bg">#14111C</color>
+    <color name="nag_surface">#211A2B</color>
+    <color name="nag_surface_variant">#2C2438</color>
+    <color name="nag_border">#352C42</color>
+
+    <color name="nag_purple">#7C3AED</color>
+    <color name="nag_purple_alt_1">#9333EA</color>
+    <color name="nag_purple_alt_2">#6D28D9</color>
+    <color name="nag_purple_alt_3">#A855F7</color>
+
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

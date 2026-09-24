@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">WhyNotMe</string>
+
+    <!-- 작성일: 2026-09-24. MainActivity의 2단계 생존 테스트 화면에서 쓰는 문자열. -->
+    <string name="permission_usage_access">사용정보 접근</string>
+    <string name="permission_overlay">다른 앱 위에 표시</string>
+    <string name="permission_notification">알림</string>
+    <string name="permission_battery">배터리 최적화 제외</string>
+    <string name="status_granted">허용됨</string>
+    <string name="status_not_granted">허용 안 됨</string>
+    <string name="action_start_service">서비스 시작</string>
+    <string name="action_stop_service">서비스 정지</string>
+    <string name="action_test_overlay">오버레이 테스트</string>
+</resources>
