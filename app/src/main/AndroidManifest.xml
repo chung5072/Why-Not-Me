@@ -32,6 +32,9 @@
     6. <queries>: API 30(Android 11)부터 다른 앱 목록 조회가 기본 차단된다. 나중에 미사용 앱을
        찾으려면(UnusedAppRepository, 아직 미구현) 실행 가능한(런처에 뜨는) 앱 목록이 필요하므로
        MAIN/LAUNCHER 인텐트 필터를 미리 선언해둔다.
+    7. RECEIVE_BOOT_COMPLETED: 재부팅으로 죽은 NagService를 앱을 열지 않아도 다시 켜기 위해
+       필요하다(service/BootReceiver.kt 참고). 이게 없으면 재부팅 후 사용자가 앱을 한 번이라도
+       직접 열기 전까지는 감시가 계속 꺼진 채로 남는다(실기기로 확인된 문제).
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -44,6 +47,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <queries>
         <intent>
@@ -89,6 +93,19 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="사용자가 설정한 미사용 앱을 감지해 다른 앱 사용 중 오버레이 알림을 띄우기 위해 포그라운드 앱 전환을 지속적으로 모니터링합니다." />
         </service>
+
+        <!--
+            exported="true": BOOT_COMPLETED는 시스템(다른 프로세스)이 보내는 브로드캐스트라
+            exported="false"면 못 받는다. android:enabled="true"는 명시적 기본값 표기.
+        -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

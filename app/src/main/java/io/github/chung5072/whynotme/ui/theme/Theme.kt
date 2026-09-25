@@ -1,6 +1,8 @@
 package io.github.chung5072.whynotme.ui.theme
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
@@ -42,3 +44,15 @@ fun WhyNotMeTheme(content: @Composable () -> Unit) {
         content = content,
     )
 }
+
+/**
+ * 검색창/문구 입력창 등 이 앱의 모든 OutlinedTextField가 공통으로 쓰는 강조색.
+ * (AppSelectionScreens.kt의 검색창, PhrasesScreen.kt의 새 문구 입력/기본 문구 수정 입력)
+ * 예전엔 세 곳에 똑같은 색 지정을 각각 복사해뒀었다 — 액센트 색을 바꿀 때 하나씩 찾아
+ * 고쳐야 하는 실수를 막기 위해 한 곳으로 모았다.
+ */
+@Composable
+fun accentTextFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = NagAccent,
+    cursorColor = NagAccent,
+)

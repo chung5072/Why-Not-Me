@@ -8,6 +8,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import io.github.chung5072.whynotme.MainActivity
 import io.github.chung5072.whynotme.NagApp
 import io.github.chung5072.whynotme.R
 import io.github.chung5072.whynotme.core.Prefs
@@ -38,9 +39,11 @@ import kotlin.random.Random
  *   묻는다. Decision이 나오면 overlay/OverlayPresenter.kt의 show()를 부른다.
  * - core/Prefs.kt의 todayNagCount: 상주 알림 본문("오늘 N번 삐졌어요")에 쓴다. 오버레이가
  *   뜨기로 결정될 때마다(TriggerGate.evaluate() 성공 시) 알림도 즉시 다시 그려서 최신화한다.
- * - MainActivity.kt: start()/stop() companion 함수를 호출해 이 서비스를 켜고 끈다.
- *   서비스가 실제로 살아있는지 여부는 MainActivity가 Prefs.isServiceRunning으로 유추한다
- *   (Service와 Activity는 프로세스 내에서도 직접 참조를 주고받지 않는 게 안드로이드 관례다).
+ * - viewmodel/SettingsViewModel.kt, service/BootReceiver.kt: start()/stop() companion 함수를
+ *   호출해 이 서비스를 켜고 끈다. 지금 살아있는지는 companion object의 isRunning(메모리 변수,
+ *   SharedPreferences 아님)으로 확인한다 — 왜 SharedPreferences가 아니라 메모리 변수인지는
+ *   5번 항목 참고.
+ * - MainActivity.kt: 상주 알림을 탭하면 buildNotification()의 setContentIntent가 이 액티비티를 연다.
  *
  * [간접 연결]
  * - NagApp.kt: startForeground()에 넘기는 Notification이 NagApp이 미리 만들어둔
@@ -67,9 +70,16 @@ import kotlin.random.Random
  *    (스코프 취소) 루프 종료.
  * 4. 사용자가 정지 버튼을 누르면 MainActivity가 NagService.stop(context) → 이 서비스에게
  *    ACTION_STOP 인텐트를 보냄 → onStartCommand()가 이를 감지해 stopSelf() 호출.
- * 5. onDestroy()에서 코루틴 스코프를 취소하고 Prefs.isServiceRunning = false로 정리한다.
- *    시스템이 배터리 최적화로 프로세스를 강제 종료하면 onDestroy()조차 못 불리고 그냥 죽는다 —
- *    이 경우가 6단계 생존 테스트에서 확인해야 하는 "조용히 멈추는" 시나리오다.
+ * 5. onDestroy()에서 코루틴 스코프를 취소하고 isRunning = false로 정리한다. 시스템이 배터리
+ *    최적화로 프로세스를 통째로 강제 종료하면 onDestroy()조차 못 불리고 그냥 죽는다 — 이때는
+ *    isRunning을 false로 되돌릴 코드 자체가 실행될 기회가 없다. 하지만 그래도 괜찮은 이유는:
+ *    isRunning이 SharedPreferences가 아니라 **이 클래스의 메모리 변수**라서다. 프로세스가
+ *    통째로 죽으면 이 변수도 같이 사라지고, 앱을 다시 열면 완전히 새 프로세스가 뜨면서
+ *    isRunning은 자동으로 false(기본값)부터 시작한다 — 즉 "설정을 true로 저장해놨는데 실제로는
+ *    죽어있어서 화면 스위치가 거짓말하는" 문제가 애초에 생길 수 없는 구조다. 예전엔 이 값을
+ *    Prefs(SharedPreferences)에 저장했었는데, 그러면 프로세스가 죽어도 "true"라는 값이 디스크에
+ *    그대로 남아있어서 다음에 앱을 열면 실제로는 안 죽은 것처럼 스위치가 계속 켜진 채로 보이는
+ *    버그가 있었다(실제로 겪음 — 실기기에서 하루 방치 후 재현됨).
  */
 class NagService : Service() {
 
@@ -83,6 +93,7 @@ class NagService : Service() {
         super.onCreate()
         prefs = Prefs(this)
         detector = ForegroundAppDetector(this)
+        isRunning = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -94,14 +105,14 @@ class NagService : Service() {
         if (intent?.action == ACTION_PAUSE_1H) {
             // 알림의 "1시간 쉬기" 버튼. TriggerGate.evaluate()가 이미 Prefs.isPaused를
             // 확인하니, 여기서는 그 값만 설정하면 된다 — 서비스를 멈추지 않고 계속 감지는
-            // 하되 오버레이만 안 띄우게 된다.
-            prefs.pauseUntilMillis = System.currentTimeMillis() + 60 * 60 * 1000L
+            // 하되 오버레이만 안 띄우게 된다. "1시간"이라는 길이는 Prefs.startPause()
+            // 하나에만 있다(MainActivity의 같은 버튼과 공유).
+            prefs.startPause()
         }
 
         startForeground(NOTIFICATION_ID, buildNotification())
 
         if (loopJob == null) {
-            prefs.isServiceRunning = true
             prefs.serviceStartTimeMillis = System.currentTimeMillis()
             startLoop()
         }
@@ -166,8 +177,11 @@ class NagService : Service() {
      * 최신화하므로, 이 화면과 SettingsScreen의 "오늘 N번" 숫자는 항상 같다.
      *
      * 액션 버튼은 "1시간 쉬기" 하나만 둔다 — 디자인 목업엔 "설정" 버튼도 있었지만, 알림에서
-     * 앱을 열게 만드는 "설정"보다는 그 자리에서 바로 끝나는 액션만 남기는 게 낫다는 피드백으로
-     * 뺐다. PendingIntent가 이 서비스 자신을 ACTION_PAUSE_1H로 다시 부른다.
+     * 앱을 열게 만드는 전용 버튼보다는 그 자리에서 바로 끝나는 액션만 남기는 게 낫다는 피드백으로
+     * 뺐다. PendingIntent가 이 서비스 자신을 ACTION_PAUSE_1H로 다시 부른다. 대신 알림 몸통(제목/
+     * 본문 부분)을 탭하면 앱이 열리게 setContentIntent를 따로 둔다 — 버튼처럼 "앱을 열도록
+     * 유도"하는 게 아니라, 원래 알림이면 다 되는 "탭하면 앱으로" 기본 동작을 켜두는 것뿐이라
+     * 위 결정과 안 겹친다(실기기 사용 중 "알림 눌러도 앱이 안 켜진다"는 피드백으로 추가).
      */
     private fun buildNotification(): Notification {
         val pauseIntent = Intent(this, NagService::class.java).apply { action = ACTION_PAUSE_1H }
@@ -178,10 +192,21 @@ class NagService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val contentIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         return NotificationCompat.Builder(this, NagApp.CHANNEL_ID)
             .setContentTitle("나는 왜 안 써? · 지켜보는 중")
             .setContentText("오늘 ${prefs.todayNagCount}번 삐졌어요")
             .setSmallIcon(R.drawable.ic_stat_nag)
+            .setContentIntent(contentPendingIntent)
             .addAction(R.drawable.ic_stat_nag, "1시간 쉬기", pausePendingIntent)
             .setOngoing(true)
             .build()
@@ -190,7 +215,7 @@ class NagService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
-        prefs.isServiceRunning = false
+        isRunning = false
     }
 
     override fun onBind(intent: Intent?) = null
@@ -201,6 +226,15 @@ class NagService : Service() {
         private const val POLL_INTERVAL_MS = 2000L
         private const val ACTION_STOP = "io.github.chung5072.whynotme.action.STOP"
         private const val ACTION_PAUSE_1H = "io.github.chung5072.whynotme.action.PAUSE_1H"
+
+        /**
+         * 지금 이 프로세스 안에 서비스 인스턴스가 살아있는지. SharedPreferences가 아니라
+         * 메모리 변수로 둔 이유는 클래스 doc의 5번 항목 참고 — 프로세스가 통째로 죽어도
+         * "죽었다"는 사실 자체가 이 변수가 사라지는 것으로 자동 반영되게 하려는 것.
+         */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
 
         fun start(context: Context) {
             val intent = Intent(context, NagService::class.java)

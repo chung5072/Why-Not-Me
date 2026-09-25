@@ -17,7 +17,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,6 +37,8 @@ import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
 import io.github.chung5072.whynotme.ui.theme.NagTextSecondary
 import io.github.chung5072.whynotme.ui.theme.NagWarning
+import io.github.chung5072.whynotme.ui.theme.accentTextFieldColors
+import io.github.chung5072.whynotme.viewmodel.DefaultPhraseItem
 
 /**
  * [목표] 오버레이 말풍선에 쓸 문구를 사용자가 관리하는 화면. 기본 5개(core/Phrases.kt
@@ -55,9 +56,10 @@ import io.github.chung5072.whynotme.ui.theme.NagWarning
  * [동작 과정] 기본 문구 행을 탭하면 그 행만 편집 모드로 바뀐다(다른 행에 영향 없음 — 행마다
  * rememberSaveable(item.index)로 편집 상태를 따로 갖는다). 저장을 누르면 onEditDefault, 원본과
  * 달라진 상태에서만 보이는 "초기화"를 누르면 onResetDefault가 불린다.
+ *
+ * [MVVM] DefaultPhraseItem은 viewmodel/PhrasesViewModel.kt에 정의돼 있다 — "원본과 다른지"
+ * 계산까지 끝난, View가 바로 그리기만 하면 되는 형태라 ViewModel 쪽 소유로 뒀다.
  */
-data class DefaultPhraseItem(val index: Int, val text: String, val isCustomized: Boolean)
-
 @Composable
 fun PhrasesScreen(
     defaultPhrases: List<DefaultPhraseItem>,
@@ -88,10 +90,7 @@ fun PhrasesScreen(
                 placeholder = { Text("새 문구 (최대 30자)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = NagAccent,
-                    cursorColor = NagAccent,
-                ),
+                colors = accentTextFieldColors(),
             )
             Button(
                 onClick = {
@@ -159,10 +158,7 @@ private fun DefaultPhraseRow(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = NagAccent,
-                    cursorColor = NagAccent,
-                ),
+                colors = accentTextFieldColors(),
             )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

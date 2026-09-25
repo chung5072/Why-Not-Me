@@ -379,6 +379,4 @@ object OverlayPresenter {
         runCatching { context.windowManager().removeView(view) }
         currentView = null
     }
-
-    fun isShowing(): Boolean = currentView != null
 }

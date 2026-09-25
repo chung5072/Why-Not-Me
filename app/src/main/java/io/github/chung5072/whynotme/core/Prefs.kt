@@ -41,10 +41,16 @@ class Prefs(context: Context) {
     private val sp: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /** NagService가 사용자에 의해 시작된 상태인지. 화면 재진입 시 버튼 상태 복원에 쓴다. */
-    var isServiceRunning: Boolean
-        get() = sp.getBoolean(KEY_SERVICE_RUNNING, false)
-        set(value) = sp.edit().putBoolean(KEY_SERVICE_RUNNING, value).apply()
+    /**
+     * 사용자가 마지막으로 스위치를 켜둔 상태인지 — NagService.isRunning(지금 실제로 도는지,
+     * 메모리 변수)과는 완전히 다른 개념이라 헷갈리면 안 된다. 이건 "실제로 도는지"가 아니라
+     * "사용자가 켜두길 원했는지"라서, 프로세스가 죽어도 안전하게(오히려 반드시) 남아있어야
+     * 하는 값이다. 앱이 다시 열릴 때 이 값과 NagService.isRunning을 비교해서, 사용자는 켜뒀는데
+     * 실제로는 죽어있으면(배터리 최적화 등으로) 자동으로 다시 시작시키는 데 쓴다.
+     */
+    var desiredServiceRunning: Boolean
+        get() = sp.getBoolean(KEY_DESIRED_SERVICE_RUNNING, false)
+        set(value) = sp.edit().putBoolean(KEY_DESIRED_SERVICE_RUNNING, value).apply()
 
     /** 감지된 포그라운드 앱 전환 누적 횟수. */
     val transitionCount: Int
@@ -117,6 +123,15 @@ class Prefs(context: Context) {
 
     val isPaused: Boolean
         get() = pauseUntilMillis > System.currentTimeMillis()
+
+    /**
+     * "1시간 쉬기"를 지금 시작한다. MainActivity(설정 화면 버튼)와 NagService(상주 알림의
+     * "1시간 쉬기" 액션) 두 곳에서 똑같이 호출한다 — 쉬는 시간이 "1시간"이라는 결정을 여기
+     * 한 곳에만 두면, 나중에 바꿀 때 두 호출부를 따로 고칠 필요가 없다.
+     */
+    fun startPause() {
+        pauseUntilMillis = System.currentTimeMillis() + PAUSE_DURATION_MILLIS
+    }
 
     /**
      * 오버레이의 "오늘은 그만 묻기" 버튼용. "패키지명@만료시각" 문자열 집합으로 저장한다
@@ -246,7 +261,7 @@ class Prefs(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "nag_prefs"
-        private const val KEY_SERVICE_RUNNING = "service_running"
+        private const val PAUSE_DURATION_MILLIS = 60 * 60 * 1000L
         private const val KEY_TRANSITION_COUNT = "transition_count"
         private const val KEY_LAST_POLL_TIME = "last_poll_time"
         private const val KEY_SERVICE_START_TIME = "service_start_time"
@@ -264,5 +279,6 @@ class Prefs(context: Context) {
         private const val KEY_CUSTOM_PHRASES = "custom_phrases"
         private const val KEY_DEFAULT_PHRASE_PREFIX = "default_phrase_"
         private const val KEY_SENSITIVE_AUTO_APPLIED = "sensitive_auto_applied"
+        private const val KEY_DESIRED_SERVICE_RUNNING = "desired_service_running"
     }
 }

@@ -13,11 +13,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,33 +24,21 @@ import io.github.chung5072.whynotme.ui.theme.NagOnAccent
 import io.github.chung5072.whynotme.ui.theme.NagSurface
 import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
-import kotlinx.coroutines.delay
 
 /**
- * [목표] "1시간 쉬기"를 누른 뒤 보여주는 화면. 남은 시간을 실시간으로 세고, 즉시 취소(재개)
- * 하는 버튼을 준다 — "설정하면 다시 취소하는 기능도 필요하다"는 요청을 여기서 구현했다.
+ * [목표] "1시간 쉬기"를 누른 뒤 보여주는 화면. 남은 시간을 보여주고, 즉시 취소(재개)하는
+ * 버튼을 준다 — "설정하면 다시 취소하는 기능도 필요하다"는 요청을 여기서 구현했다.
  *
- * [직접 연결]
- * - core/Prefs.kt의 pauseUntilMillis: SettingsScreen에서 "1시간 쉬기"를 누를 때 지금+1시간으로
- *   세팅된 값을 pauseUntilMillis 파라미터로 받는다.
- * - MainActivity.kt: onCancelPause 콜백에서 Prefs.pauseUntilMillis = 0으로 되돌리고
- *   SettingsScreen으로 되돌아간다. 이 컴포저블 자체는 Prefs를 직접 건드리지 않는다.
+ * [직접 연결] MainActivity.kt의 PausedRoute가 viewmodel/PausedViewModel.kt에서 1초마다
+ * 다시 계산한 remainingMillis를 받아 넘긴다. onCancelPause 콜백은 PausedViewModel.cancelPause()
+ * (Prefs.pauseUntilMillis = 0)를 호출한다.
  *
- * [동작 과정] LaunchedEffect 안에서 1초마다 "지금부터 pauseUntilMillis까지 남은 시간"을
- * 다시 계산한다. 0 이하가 되면 더 이상 카운트하지 않는다 — 화면을 벗어나는 건 MainActivity가
- * onResume 재확인으로 처리한다(이 화면은 카운트다운 표시만 책임진다).
+ * [MVVM] "언제까지 쉬는지" 계산(비즈니스 로직)은 PausedViewModel이 맡고, 이 컴포저블은
+ * remainingMillis를 받아 "MM:SS" 문자열로 바꾸는 순수 표시 변환(formatCountdown)만 한다 —
+ * 카운트다운 타이머 자체를 여기서 돌리지 않는다.
  */
 @Composable
-fun PausedScreen(pauseUntilMillis: Long, onCancelPause: () -> Unit) {
-    var remainingMillis by remember { mutableLongStateOf((pauseUntilMillis - System.currentTimeMillis()).coerceAtLeast(0)) }
-
-    LaunchedEffect(pauseUntilMillis) {
-        while (remainingMillis > 0) {
-            delay(1000)
-            remainingMillis = (pauseUntilMillis - System.currentTimeMillis()).coerceAtLeast(0)
-        }
-    }
-
+fun PausedScreen(remainingMillis: Long, onCancelPause: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

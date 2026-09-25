@@ -13,18 +13,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import io.github.chung5072.whynotme.core.InstalledApp
@@ -35,6 +42,7 @@ import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
 import io.github.chung5072.whynotme.ui.theme.NagTextSecondary
 import io.github.chung5072.whynotme.ui.theme.NagWarning
+import io.github.chung5072.whynotme.ui.theme.accentTextFieldColors
 
 /**
  * [목표]
@@ -52,7 +60,8 @@ import io.github.chung5072.whynotme.ui.theme.NagWarning
  * [동작 과정] 두 화면 다 AppToggleList()라는 같은 내부 컴포저블을 공유한다 — 차이는
  * HiddenAppsScreen만 은행/페이/인증서 자동 감지 섹션과 경고 배너를 추가로 보여준다는 것.
  * CandidateExcludedAppsScreen은 "일부러 안 쓰는 앱"이라는 맥락상 자동 감지할 좋은 규칙이
- * 없어서 전체 목록 하나만 보여준다.
+ * 없어서 전체 목록 하나만 보여준다. 앱이 많으면 스크롤로 하나씩 찾기 번거롭다는 피드백으로
+ * 검색창(SearchField)을 추가했다 — 라벨(앱 이름) 기준 대소문자 무시 부분 일치.
  */
 @Composable
 fun HiddenAppsScreen(
@@ -62,7 +71,11 @@ fun HiddenAppsScreen(
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
 ) {
-    val (sensitive, others) = apps.partition { it.isLikelySensitive }
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(apps, query) {
+        if (query.isBlank()) apps else apps.filter { it.label.contains(query, ignoreCase = true) }
+    }
+    val (sensitive, others) = filtered.partition { it.isLikelySensitive }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -75,6 +88,7 @@ fun HiddenAppsScreen(
                 color = NagTextSecondary,
             )
         }
+        item { SearchField(query, onQueryChange = { query = it }) }
         item { SelectAllRow(onSelectAll, onDeselectAll) }
         item {
             Row(
@@ -105,6 +119,9 @@ fun HiddenAppsScreen(
         items(others, key = { it.packageName }) { app ->
             AppToggleRow(app, selected.contains(app.packageName), onToggle)
         }
+        if (filtered.isEmpty()) {
+            item { NoSearchResults() }
+        }
     }
 }
 
@@ -116,6 +133,11 @@ fun CandidateExcludedAppsScreen(
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
 ) {
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(apps, query) {
+        if (query.isBlank()) apps else apps.filter { it.label.contains(query, ignoreCase = true) }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -127,12 +149,39 @@ fun CandidateExcludedAppsScreen(
                 color = NagTextSecondary,
             )
         }
+        item { SearchField(query, onQueryChange = { query = it }) }
         item { SelectAllRow(onSelectAll, onDeselectAll) }
-        item { Text("설치된 앱 · ${apps.size}", style = MaterialTheme.typography.labelMedium, color = NagTextMuted) }
-        items(apps, key = { it.packageName }) { app ->
+        item { Text("설치된 앱 · ${filtered.size}", style = MaterialTheme.typography.labelMedium, color = NagTextMuted) }
+        items(filtered, key = { it.packageName }) { app ->
             AppToggleRow(app, selected.contains(app.packageName), onToggle)
         }
+        if (filtered.isEmpty()) {
+            item { NoSearchResults() }
+        }
     }
+}
+
+@Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("앱 이름으로 찾기") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        colors = accentTextFieldColors(),
+    )
+}
+
+@Composable
+private fun NoSearchResults() {
+    Text(
+        "검색 결과가 없습니다.",
+        style = MaterialTheme.typography.bodySmall,
+        color = NagTextMuted,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+    )
 }
 
 @Composable

@@ -40,9 +40,10 @@ import io.github.chung5072.whynotme.ui.theme.NagWarning
  *
  * [직접 연결]
  * - core/Permissions.kt: 4개 권한 상태를 읽어 체크리스트를 그린다(MainActivity가 만들어 넘김).
- * - core/Prefs.kt: todayNagCount/nagCount/transitionCount/frequency 등을 MainActivity가
- *   읽어 넘기고, 이 화면의 콜백(onFrequencyChange 등)이 다시 Prefs에 쓴다.
- * - service/NagService.kt: 상단 스위치가 start()/stop()을 직접 호출한다(MainActivity 경유).
+ * - viewmodel/SettingsViewModel.kt: todayNagCount/nagCount/transitionCount/frequency 등을
+ *   `SettingsUiState`로 만들어 넘기고, 이 화면의 콜백(onFrequencyChange 등)은 그 ViewModel의
+ *   함수를 그대로 참조한다(MainActivity.SettingsRoute가 연결). 이 화면 자체는 상태가 없다.
+ * - service/NagService.kt: 상단 스위치가 start()/stop()을 직접 호출한다(ViewModel 경유).
  *
  * [간접 연결] core/TriggerGate.kt가 오버레이를 띄울 때마다 Prefs.todayNagCount/nagCount를
  * 갱신하고, 그 값이 여기 카드에 표시된다. 상주 알림(NagService)도 같은 todayNagCount를
@@ -50,12 +51,13 @@ import io.github.chung5072.whynotme.ui.theme.NagWarning
  * 기준을 보여줘서 서로 다른 숫자가 떴었다(실제 버그는 아니었지만 혼란스러웠음).
  *
  * [동작 과정 — 숨겨진 개발자 모드]
- * "오늘 N번 삐졌어요" 카드를 10번 탭하면 onNagCardTap이 10번 불리고(카운팅은 MainActivity가
- * 함) devModeUnlocked가 true가 된다. 그때만 "얼마나 자주" 카드에 다음 등장까지 남은 시간
- * (nextTriggerLabel)이, 그리고 "개발자" 섹션(오버레이 강제 테스트 + 테스트 빈도 켜기/끄기 +
- * 숨기기)이 보인다. "테스트" 빈도는 가끔/보통/자주 pill과 나란히 두지 않고 개발자 섹션에
- * 별도 버튼으로 뒀다 — 실사용 설정과 개발자 전용 설정을 섞지 않기 위해서. "숨기기" 버튼을
- * 누르면 onHideDevMode로 다시 false가 된다.
+ * "오늘 N번 삐졌어요" 카드를 10번 탭하면 onNagCardTap이 10번 불리고(카운팅은 ViewModel이 함)
+ * devModeUnlocked가 true가 된다. 그때만 "얼마나 자주" 카드에 다음 등장까지 남은 시간
+ * (nextTriggerLabel)이, 진단용 숫자(누적/전환 횟수/마지막 폴링 시각 — 배터리 최적화가 폴링을
+ * 몰래 죽이는지 확인하는 용도, 일반 사용자에겐 의미 없는 숫자라 여기로 옮김), 그리고 "개발자"
+ * 섹션(오버레이 강제 테스트 + 테스트 빈도 켜기/끄기 + 숨기기)이 보인다. "테스트" 빈도는
+ * 가끔/보통/자주 pill과 나란히 두지 않고 개발자 섹션에 별도 버튼으로 뒀다 — 실사용 설정과
+ * 개발자 전용 설정을 섞지 않기 위해서. "숨기기" 버튼을 누르면 onHideDevMode로 다시 false가 된다.
  */
 @Composable
 fun SettingsScreen(
@@ -114,12 +116,6 @@ fun SettingsScreen(
                     color = NagOnAccent,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    "누적 $nagCount 번 · 감지된 전환 $transitionCount 번 · 마지막 폴링 $lastPollLabel",
-                    color = NagOnAccent.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
@@ -246,6 +242,16 @@ fun SettingsScreen(
 
         if (devModeUnlocked) {
             item { SectionLabel("개발자") }
+            item {
+                // 배터리 최적화가 폴링을 몰래 죽이는지 진단하는 용도(CLAUDE.md 함정 목록 참고).
+                // 일반 사용자는 몰라도 되는 숫자라 개발자 섹션으로 옮겼다 — 원래는 메인 카드에
+                // 있었는데 "이게 무슨 의미냐"는 피드백을 받았다.
+                Text(
+                    "누적 $nagCount 번 · 감지된 전환 $transitionCount 번 · 마지막 폴링 $lastPollLabel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NagTextMuted,
+                )
+            }
             item {
                 Button(
                     onClick = onTestOverlay,
