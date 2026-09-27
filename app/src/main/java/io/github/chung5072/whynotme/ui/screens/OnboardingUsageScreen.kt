@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,12 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.github.chung5072.whynotme.ui.theme.NagAccent
-import io.github.chung5072.whynotme.ui.theme.NagOnAccent
 import io.github.chung5072.whynotme.ui.theme.NagSurface
 import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
 import io.github.chung5072.whynotme.ui.theme.NagWarning
+import io.github.chung5072.whynotme.ui.theme.accentButtonColors
 
 /**
  * [목표] 온보딩 3단계. "사용정보 접근" 권한(어떤 앱을 얼마나 쓰는지 보는 권한)이 정확히
@@ -66,7 +64,7 @@ fun OnboardingUsageScreen(onOpenSettings: () -> Unit) {
             Button(
                 onClick = onOpenSettings,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = NagAccent, contentColor = NagOnAccent),
+                colors = accentButtonColors(),
             ) { Text("동의하고 설정 열기") }
         },
     )

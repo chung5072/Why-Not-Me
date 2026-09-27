@@ -211,6 +211,10 @@ private fun SettingsRoute(
             viewModel.startPause()
             navigate(Screen.Paused)
         },
+        onPauseToday = {
+            viewModel.pauseUntilMidnight()
+            navigate(Screen.Paused)
+        },
         onTestOverlay = viewModel::testOverlay,
         devModeUnlocked = uiState.devModeUnlocked,
         onNagCardTap = viewModel::onNagCardTap,
@@ -329,9 +333,14 @@ private fun PausedRoute(navigate: (Screen) -> Unit) {
     LaunchedEffect(Unit) { viewModel.refresh() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    BackHandler { navigate(Screen.Settings) }
+    // 뒤로가기를 누르면 설정 화면으로 안 보낸다 — 쉬는 중엔 이 화면이 Settings와 마찬가지로
+    // "홈" 역할이라(startScreen() 참고), 여기서 뒤로가면 SettingsRoute처럼(별도 BackHandler
+    // 없음) 그냥 앱이 종료되는 게 일관적이다. 특히 오버레이에서 바로 "오늘 하루 쉬기"를 눌러
+    // 이 화면이 이번 세션 첫 화면인 경우, 뒤로가기로 한 번도 안 가본 설정 화면에 점프하면서
+    // "지금 쉬는 중인지 아닌지" 혼란을 다시 만들었었다(2026-09-27, 실기기 피드백).
     PausedScreen(
         remainingMillis = uiState.remainingMillis,
+        pauseKind = uiState.pauseKind,
         onCancelPause = {
             viewModel.cancelPause()
             navigate(Screen.Settings)

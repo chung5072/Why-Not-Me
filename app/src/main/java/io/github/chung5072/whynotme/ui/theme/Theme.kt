@@ -1,5 +1,7 @@
 package io.github.chung5072.whynotme.ui.theme
 
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextFieldColors
@@ -55,4 +57,26 @@ fun WhyNotMeTheme(content: @Composable () -> Unit) {
 fun accentTextFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = NagAccent,
     cursorColor = NagAccent,
+)
+
+/**
+ * SettingsScreen의 "1시간 쉬기"/"오늘 하루 쉬기"/"오버레이 테스트" 등 강조되지 않은 보조
+ * 버튼이 공통으로 쓰는 색. accentTextFieldColors()와 같은 이유로 한 곳에 모았다 — 이 색
+ * 지정이 세 곳에 각각 복사돼 있었다.
+ */
+@Composable
+fun neutralButtonColors(): ButtonColors = ButtonDefaults.buttonColors(
+    containerColor = NagSurfaceVariant,
+    contentColor = MaterialTheme.colorScheme.onBackground,
+)
+
+/**
+ * 온보딩의 "다음"/"쉬는 중" 화면의 "지금 바로 다시 켜기"/"문구 고르기"의 추가·저장처럼, 화면의
+ * 핵심 액션(주 버튼)이 공통으로 쓰는 강조색. 6개 파일에 각각 복사돼 있던 걸 한 곳으로 모았다
+ * (2026-09-27) — accentTextFieldColors()/neutralButtonColors()와 같은 이유.
+ */
+@Composable
+fun accentButtonColors(): ButtonColors = ButtonDefaults.buttonColors(
+    containerColor = NagAccent,
+    contentColor = NagOnAccent,
 )

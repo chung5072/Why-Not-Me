@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class PausedUiState(val remainingMillis: Long = 0L)
+data class PausedUiState(val remainingMillis: Long = 0L, val pauseKind: String = Prefs.PAUSE_KIND_HOUR)
 
 /**
  * [목표] "쉬는 중" 화면의 ViewModel. Prefs.pauseUntilMillis를 읽어 남은 시간을 1초마다 계산하고,
@@ -21,8 +21,9 @@ data class PausedUiState(val remainingMillis: Long = 0L)
  * 온 값을 기준으로 한 비즈니스 로직이라 ViewModel로 옮겼다. 남은 밀리초를 "MM:SS" 문자열로
  * 포맷하는 것(formatCountdown)은 순수 표시 형식 변환이라 View(PausedScreen.kt)에 그대로 남겨뒀다.
  *
- * [직접 연결] MainActivity.kt의 PausedRoute가 이 인스턴스를 얻어 remainingMillis를
- * PausedScreen에 넘긴다.
+ * [직접 연결] MainActivity.kt의 PausedRoute가 이 인스턴스를 얻어 remainingMillis/pauseKind를
+ * PausedScreen에 넘긴다. pauseKind(core/Prefs.kt)는 "1시간"/"오늘 하루" 중 하나라, "지금 쉬는
+ * 게 뭔지 모르겠다"는 피드백(2026-09-27)을 반영해 화면 문구를 그에 맞게 다르게 보여준다.
  *
  * [주의 — ViewModel 재사용 함정] 이 ViewModel은 `viewModel()`이 Activity의 ViewModelStore에서
  * 꺼내주는 것이라, "1시간 쉬기"를 두 번째 누를 때도 **같은 인스턴스**가 재사용된다(Activity가
@@ -38,7 +39,7 @@ class PausedViewModel(application: Application) : AndroidViewModel(application) 
     private var pauseUntilMillis = prefs.pauseUntilMillis
     private var countdownJob: Job? = null
 
-    private val _uiState = MutableStateFlow(PausedUiState(remaining()))
+    private val _uiState = MutableStateFlow(PausedUiState(remaining(), prefs.pauseKind))
     val uiState: StateFlow<PausedUiState> = _uiState.asStateFlow()
 
     init {
@@ -48,7 +49,7 @@ class PausedViewModel(application: Application) : AndroidViewModel(application) 
     /** 화면에 들어올 때마다 호출 — 위 클래스 doc의 "ViewModel 재사용 함정" 참고. */
     fun refresh() {
         pauseUntilMillis = prefs.pauseUntilMillis
-        _uiState.value = PausedUiState(remaining())
+        _uiState.value = PausedUiState(remaining(), prefs.pauseKind)
         startCountdown()
     }
 

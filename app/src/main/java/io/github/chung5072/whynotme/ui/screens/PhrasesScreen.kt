@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,13 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import io.github.chung5072.whynotme.ui.theme.NagAccent
-import io.github.chung5072.whynotme.ui.theme.NagOnAccent
 import io.github.chung5072.whynotme.ui.theme.NagSurface
 import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
 import io.github.chung5072.whynotme.ui.theme.NagTextSecondary
 import io.github.chung5072.whynotme.ui.theme.NagWarning
+import io.github.chung5072.whynotme.ui.theme.accentButtonColors
 import io.github.chung5072.whynotme.ui.theme.accentTextFieldColors
 import io.github.chung5072.whynotme.viewmodel.DefaultPhraseItem
 
@@ -99,7 +97,7 @@ fun PhrasesScreen(
                         input = ""
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = NagAccent, contentColor = NagOnAccent),
+                colors = accentButtonColors(),
             ) { Text("추가") }
         }
 
@@ -172,7 +170,7 @@ private fun DefaultPhraseRow(
                             editing = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NagAccent, contentColor = NagOnAccent),
+                    colors = accentButtonColors(),
                 ) { Text("저장") }
             }
         } else {

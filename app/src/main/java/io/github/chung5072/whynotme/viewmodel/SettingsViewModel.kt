@@ -147,6 +147,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         prefs.startPause()
     }
 
+    /** 오버레이 액션 카드의 "오늘 하루 쉬기"와 같은 함수(Prefs.pauseUntilMidnight)를 부른다 —
+     * 설정 화면에서도 똑같이 오늘 자정까지 쉴 수 있게. */
+    fun pauseUntilMidnight() {
+        prefs.pauseUntilMidnight()
+    }
+
     fun testOverlay() {
         OverlayPresenter.show(getApplication(), TEST_OVERLAY_PACKAGE, TEST_OVERLAY_MESSAGE)
     }

@@ -13,7 +13,7 @@ import kotlin.random.Random
  * - service/NagService.kt: 전환이 감지될 때마다 evaluate()를 호출하고, null이 아닌
  *   Decision을 받으면 OverlayPresenter.show()를 부른다.
  * - core/UnusedAppRepository.kt: 후보 앱 목록(안 쓰는 순 정렬)을 여기서 가져온다.
- * - core/Prefs.kt: 일시정지/제외/음소거/빈도 설정을 전부 여기서 읽고, 실제로 띄우기로
+ * - core/Prefs.kt: 일시정지/제외/빈도 설정을 전부 여기서 읽고, 실제로 띄우기로
  *   결정했을 때만 lastShownMillis/nagCount를 갱신한다.
  *
  * [동작 과정 — 순서가 중요하다, 싼 검사부터]
@@ -29,8 +29,8 @@ import kotlin.random.Random
  *    계산 전에 주사위부터 던져서, 어차피 안 띄울 대부분의 tick에서 무거운 조회를 생략한다.
  *    "테스트" 빈도는 SettingsScreen의 숨겨진 개발자 모드에서만 고를 수 있다.
  * 6. 여기까지 통과해야 UnusedAppRepository.leastUsedCandidates()를 candidateExcludedPackages
- *    기준으로 부른다. 결과에서 음소거 중인 앱(Prefs.isMutedNow)과 지금 연 앱 자신을 뺀 뒤,
- *    상위 5개 중 무작위로 하나를 고른다 — 매번 1등만 나오면 지루하니 약간의 변주를 준다.
+ *    기준으로 부른다. 결과에서 지금 연 앱 자신을 뺀 뒤, 상위 5개 중 무작위로 하나를 고른다 —
+ *    매번 1등만 나오면 지루하니 약간의 변주를 준다.
  * 7. 후보가 남아 있으면 lastShownMillis/incrementNagCount()를 갱신하고, 문구 풀(기본 5개 +
  *    사용자 추가분)에서 하나를 무작위로 골라 Decision을 반환한다.
  *
@@ -54,7 +54,7 @@ object TriggerGate {
         if (Random.nextDouble() >= probabilityFor(prefs.frequency)) return null
 
         val candidate = UnusedAppRepository.leastUsedCandidates(context, prefs.candidateExcludedPackages)
-            .filter { it.packageName != foregroundPackage && !prefs.isMutedNow(it.packageName) }
+            .filter { it.packageName != foregroundPackage }
             .take(5)
             .randomOrNull() ?: return null
 

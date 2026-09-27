@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,25 +19,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.chung5072.whynotme.ui.theme.NagAccent
 import io.github.chung5072.whynotme.ui.theme.NagBorder
-import io.github.chung5072.whynotme.ui.theme.NagOnAccent
 import io.github.chung5072.whynotme.ui.theme.NagSurface
 import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
+import io.github.chung5072.whynotme.ui.theme.accentButtonColors
 
 /**
- * [목표] "1시간 쉬기"를 누른 뒤 보여주는 화면. 남은 시간을 보여주고, 즉시 취소(재개)하는
- * 버튼을 준다 — "설정하면 다시 취소하는 기능도 필요하다"는 요청을 여기서 구현했다.
+ * [목표] "1시간 쉬기"/"오늘 하루 쉬기"를 누른 뒤 보여주는 화면. 남은 시간을 보여주고, 즉시
+ * 취소(재개)하는 버튼을 준다 — "설정하면 다시 취소하는 기능도 필요하다"는 요청을 여기서
+ * 구현했다. pauseKind로 "지금 쉬는 게 둘 중 뭔지" 헤드라인에서 구분해준다(2026-09-27,
+ * "쉬고 있는지 아닌지, 어떤 쉬기인지 모르겠다"는 피드백 반영).
  *
  * [직접 연결] MainActivity.kt의 PausedRoute가 viewmodel/PausedViewModel.kt에서 1초마다
- * 다시 계산한 remainingMillis를 받아 넘긴다. onCancelPause 콜백은 PausedViewModel.cancelPause()
- * (Prefs.pauseUntilMillis = 0)를 호출한다.
+ * 다시 계산한 remainingMillis/pauseKind를 받아 넘긴다. onCancelPause 콜백은
+ * PausedViewModel.cancelPause()(Prefs.pauseUntilMillis = 0)를 호출한다.
  *
- * [MVVM] "언제까지 쉬는지" 계산(비즈니스 로직)은 PausedViewModel이 맡고, 이 컴포저블은
- * remainingMillis를 받아 "MM:SS" 문자열로 바꾸는 순수 표시 변환(formatCountdown)만 한다 —
+ * [MVVM] "언제까지, 어떤 쉬기인지" 계산(비즈니스 로직)은 PausedViewModel이 맡고, 이 컴포저블은
+ * remainingMillis를 "MM:SS" 문자열로 바꾸는 순수 표시 변환(formatCountdown)만 한다 —
  * 카운트다운 타이머 자체를 여기서 돌리지 않는다.
  */
 @Composable
-fun PausedScreen(remainingMillis: Long, onCancelPause: () -> Unit) {
+fun PausedScreen(remainingMillis: Long, pauseKind: String, onCancelPause: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -54,7 +55,7 @@ fun PausedScreen(remainingMillis: Long, onCancelPause: () -> Unit) {
         ) { Text("⏸", style = MaterialTheme.typography.headlineMedium) }
 
         Text(
-            "지금은 쉬는 중이에요",
+            "지금은 ${pauseKind} 쉬는 중이에요",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
         )
@@ -82,7 +83,7 @@ fun PausedScreen(remainingMillis: Long, onCancelPause: () -> Unit) {
             Button(
                 onClick = onCancelPause,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = NagAccent, contentColor = NagOnAccent),
+                colors = accentButtonColors(),
             ) { Text("지금 바로 다시 켜기 (쉬기 취소)") }
             Text(
                 "설정 > 상단 스위치로도 언제든 끌 수 있어요.",

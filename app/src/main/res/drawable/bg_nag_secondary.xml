@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 작성일: 2026-09-24. overlay_actions.xml의 보조 버튼(오늘 그만 묻기/제외하기) 배경. -->
+<!-- overlay_actions.xml의 보조 버튼(오늘 하루 쉬기/제외하기) 배경. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/nag_surface_variant" />

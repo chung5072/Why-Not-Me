@@ -9,6 +9,10 @@
 
     [직접 연결] overlay/OverlayPresenter.kt의 showActions()가 inflate해서 각 id를 채우고
     버튼 클릭 리스너를 단다.
+
+    actionOpen/actionExclude는 지금 나온 그 앱(targetPackage) 하나만 대상으로 하지만,
+    actionPauseToday는 이 앱 전체를 오늘 자정까지 쉬게 하는 전역 액션이다 — 대상이 다르다는
+    점에 주의(Prefs.pauseUntilMidnight() 참고).
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="300dp"
@@ -78,12 +82,12 @@
         android:textStyle="bold" />
 
     <Button
-        android:id="@+id/actionMuteToday"
+        android:id="@+id/actionPauseToday"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
         android:background="@drawable/bg_nag_secondary"
-        android:text="오늘은 그만 묻기"
+        android:text="오늘 하루 쉬기"
         android:textAllCaps="false"
         android:textColor="@color/white" />
 

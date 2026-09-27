@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,10 +20,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import io.github.chung5072.whynotme.ui.theme.NagAccent
 import io.github.chung5072.whynotme.ui.theme.NagBorder
-import io.github.chung5072.whynotme.ui.theme.NagOnAccent
 import io.github.chung5072.whynotme.ui.theme.NagSurface
 import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
+import io.github.chung5072.whynotme.ui.theme.accentButtonColors
 
 /**
  * [목표] 온보딩 2단계. "다른 앱 위에 표시" 권한이 왜 필요한지 설명하고 설정 화면으로 보낸다.
@@ -115,7 +114,7 @@ fun OnboardingOverlayScreen(onOpenSettings: () -> Unit) {
             Button(
                 onClick = onOpenSettings,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = NagAccent, contentColor = NagOnAccent),
+                colors = accentButtonColors(),
             ) { Text("설정 열기") }
             Text(
                 "설정에서 토글을 켜고 뒤로가기를 누르면\n자동으로 다음 단계로 넘어갑니다.",

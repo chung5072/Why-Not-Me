@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,6 +23,7 @@ import io.github.chung5072.whynotme.ui.theme.NagOnAccent
 import io.github.chung5072.whynotme.ui.theme.NagSurface
 import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
+import io.github.chung5072.whynotme.ui.theme.accentButtonColors
 
 /**
  * [목표] 앱을 처음 열었을 때 가장 먼저 보는 화면. "이 앱이 뭘 하는 앱인지"를 오버레이 말풍선
@@ -104,7 +104,7 @@ fun OnboardingIntroScreen(onNext: () -> Unit, onSkip: () -> Unit) {
             Button(
                 onClick = onNext,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = NagAccent, contentColor = NagOnAccent),
+                colors = accentButtonColors(),
             ) { Text("다른 앱에서도 나오게 하기") }
             TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
                 Text("나중에 하기", color = NagTextMuted)

@@ -18,15 +18,16 @@ import java.util.Locale
  * [직접 연결]
  * - service/NagService.kt: 2초 폴링 루프에서 매 tick마다 recordPoll()을 호출해 시각을 갱신하고,
  *   포그라운드 앱이 바뀔 때마다 incrementTransitionCount()를 호출한다.
- * - MainActivity.kt: LaunchedEffect에서 주기적으로 이 클래스의 getter들을 읽어 화면에 표시한다.
+ * - viewmodel/SettingsViewModel.kt: 1초 주기 갱신 루프에서 이 클래스의 getter들을 읽어
+ *   SettingsScreen에 표시할 상태를 만든다.
  *
  * [간접 연결]
  * - ui/screens 폴더: 온보딩 완료 여부, 제외 앱 목록, 일시정지 종료 시각, 알림 빈도 설정도
  *   전부 이 클래스에 추가로 얹었다. Room으로 옮기기 전까지는 SharedPreferences 하나로
  *   충분한 규모라 이 클래스가 유일한 저장소다.
- * - overlay/OverlayPresenter.kt: 오버레이 말풍선의 "오늘 그만 묻기"/"제외하기" 액션이
- *   각각 muteUntilMidnight()/setExcluded()를 이 클래스를 통해 갱신한다.
- * - core/TriggerGate.kt: excludedPackages/isMutedNow/pauseUntilMillis/frequency를 읽어
+ * - overlay/OverlayPresenter.kt: 오버레이 액션 카드의 "제외하기"가 setCandidateExcluded(),
+ *   "오늘 하루 쉬기"가 pauseUntilMidnight()를 이 클래스를 통해 갱신한다.
+ * - core/TriggerGate.kt: excludedPackages/pauseUntilMillis/frequency를 읽어
  *   "지금 오버레이를 띄울지"를 판단하고, 띄우기로 했으면 incrementNagCount()와
  *   lastShownMillis를 갱신한다.
  *
@@ -116,7 +117,12 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_FREQUENCY, "보통") ?: "보통"
         set(value) = sp.edit().putString(KEY_FREQUENCY, value).apply()
 
-    /** "1시간 쉬기"가 끝나는 시각(epoch millis). 0 또는 과거 시각이면 쉬는 중이 아님. */
+    /**
+     * 쉬기가 끝나는 시각(epoch millis). 0 또는 과거 시각이면 쉬는 중이 아님. "1시간 쉬기"와
+     * "오늘 하루 쉬기" 둘 다 이 하나의 값을 쓴다 — 둘의 차이는 이 값을 얼마나 먼 미래로
+     * 설정하느냐(지금+1시간 vs 오늘 자정)뿐, 그 이후의 동작(TriggerGate.isPaused 확인,
+     * PausedScreen 카운트다운)은 완전히 똑같다.
+     */
     var pauseUntilMillis: Long
         get() = sp.getLong(KEY_PAUSE_UNTIL, 0L)
         set(value) = sp.edit().putLong(KEY_PAUSE_UNTIL, value).apply()
@@ -125,39 +131,44 @@ class Prefs(context: Context) {
         get() = pauseUntilMillis > System.currentTimeMillis()
 
     /**
-     * "1시간 쉬기"를 지금 시작한다. MainActivity(설정 화면 버튼)와 NagService(상주 알림의
-     * "1시간 쉬기" 액션) 두 곳에서 똑같이 호출한다 — 쉬는 시간이 "1시간"이라는 결정을 여기
-     * 한 곳에만 두면, 나중에 바꿀 때 두 호출부를 따로 고칠 필요가 없다.
+     * 지금 쉬는 게 "1시간 쉬기"인지 "오늘 하루 쉬기"인지. startPause()/pauseUntilMidnight()가
+     * pauseUntilMillis와 같이 세팅하는 짝꿍 값이라, 둘이 어긋날 일이 없다(호출부에서 따로
+     * 신경 쓸 필요 없음). PausedScreen과 상주 알림이 "지금 어떤 쉬기 중인지" 문구를 다르게
+     * 보여주기 위해 쓴다 — pauseUntilMillis 하나만 보면 언제 끝나는지는 알아도 어떤 종류인지는
+     * 구분이 안 돼서(예: 자정 10분 전에 "1시간 쉬기"를 누르면 "오늘 하루 쉬기"랑 남는 시간이
+     * 거의 같아진다) 별도로 둔다. isPaused가 false인 동안은 의미 없는 값이니 그때는 안 읽는다.
+     */
+    var pauseKind: String
+        get() = sp.getString(KEY_PAUSE_KIND, PAUSE_KIND_HOUR) ?: PAUSE_KIND_HOUR
+        private set(value) = sp.edit().putString(KEY_PAUSE_KIND, value).apply()
+
+    /**
+     * "1시간 쉬기"를 지금 시작한다. viewmodel/SettingsViewModel.kt(설정 화면 버튼)와
+     * NagService(상주 알림의 "1시간 쉬기" 액션) 두 곳에서 똑같이 호출한다 — 쉬는 시간이
+     * "1시간"이라는 결정을 여기 한 곳에만 두면, 나중에 바꿀 때 두 호출부를 따로 고칠 필요가
+     * 없다.
      */
     fun startPause() {
         pauseUntilMillis = System.currentTimeMillis() + PAUSE_DURATION_MILLIS
+        pauseKind = PAUSE_KIND_HOUR
     }
 
     /**
-     * 오버레이의 "오늘은 그만 묻기" 버튼용. "패키지명@만료시각" 문자열 집합으로 저장한다
-     * (SharedPreferences는 Map을 직접 못 담아서 StringSet을 문자열 인코딩으로 흉내낸 것).
+     * "오늘 하루 쉬기"를 지금 시작한다 — 오늘 자정까지 통째로 조용히 한다. 오버레이 액션
+     * 카드(overlay/OverlayPresenter.kt의 showActions)와 설정 화면 버튼 둘 다 이 함수를 부른다.
+     * 앱을 열지 않고 오버레이에서 바로 눌러도 되는 게 핵심이라, "1시간 쉬기"(상주 알림에서도
+     * 누를 수 있음)와 마찬가지로 화면 없이 Context만 있어도 동작한다. 토글을 그냥 꺼두는
+     * 것과 다른 점: 자정이 지나면 저절로 풀려서 다음 날 다시 감시가 시작된다 — 사용자가
+     * 껐다 켜는 걸 잊어버려도 앱이 계속 살아있다는 걸 보여줄 수 있다는 게 이 기능의 요점.
      */
-    fun muteUntilMidnight(packageName: String) {
-        val midnight = Calendar.getInstance().apply {
+    fun pauseUntilMidnight() {
+        pauseUntilMillis = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
             set(Calendar.SECOND, 59)
             set(Calendar.MILLISECOND, 999)
         }.timeInMillis
-
-        val current = sp.getStringSet(KEY_MUTED_APPS, emptySet()) ?: emptySet()
-        val updated = current
-            .filterNot { it.substringBeforeLast('@') == packageName }
-            .toMutableSet()
-        updated += "$packageName@$midnight"
-        sp.edit().putStringSet(KEY_MUTED_APPS, updated).apply()
-    }
-
-    fun isMutedNow(packageName: String): Boolean {
-        val entries = sp.getStringSet(KEY_MUTED_APPS, emptySet()) ?: emptySet()
-        val entry = entries.firstOrNull { it.substringBeforeLast('@') == packageName } ?: return false
-        val until = entry.substringAfterLast('@').toLongOrNull() ?: return false
-        return until > System.currentTimeMillis()
+        pauseKind = PAUSE_KIND_TODAY
     }
 
     /** TriggerGate가 실제로 오버레이를 띄운 횟수. transitionCount(원시 감지 횟수)와는 다른 값. */
@@ -260,6 +271,10 @@ class Prefs(context: Context) {
     private fun defaultPhraseKey(index: Int) = "$KEY_DEFAULT_PHRASE_PREFIX$index"
 
     companion object {
+        /** pauseKind가 가질 수 있는 값. NagService/PausedViewModel이 문구를 고를 때 비교한다. */
+        const val PAUSE_KIND_HOUR = "1시간"
+        const val PAUSE_KIND_TODAY = "오늘 하루"
+
         private const val PREFS_NAME = "nag_prefs"
         private const val PAUSE_DURATION_MILLIS = 60 * 60 * 1000L
         private const val KEY_TRANSITION_COUNT = "transition_count"
@@ -269,7 +284,7 @@ class Prefs(context: Context) {
         private const val KEY_EXCLUDED_PACKAGES = "excluded_packages"
         private const val KEY_FREQUENCY = "frequency"
         private const val KEY_PAUSE_UNTIL = "pause_until"
-        private const val KEY_MUTED_APPS = "muted_apps"
+        private const val KEY_PAUSE_KIND = "pause_kind"
         private const val KEY_NAG_COUNT = "nag_count"
         private const val KEY_TODAY_NAG_COUNT = "today_nag_count"
         private const val KEY_TODAY_NAG_DATE = "today_nag_date"

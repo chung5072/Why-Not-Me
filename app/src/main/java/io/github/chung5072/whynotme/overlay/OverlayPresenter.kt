@@ -20,6 +20,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import io.github.chung5072.whynotme.R
 import io.github.chung5072.whynotme.core.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -48,7 +49,8 @@ import kotlin.random.Random
  * [직접 연결]
  * - res/layout/overlay_nag.xml: overlayRoot(전체 그룹)/overlayBubbleGroup(말풍선+꼬리,
  *   초기 안 보임)/overlayIcon(캐릭터, 계속 보임)을 이 클래스가 애니메이션시킨다.
- * - core/Prefs.kt: "오늘 그만 묻기"/"제외하기"는 Prefs를 직접 갱신.
+ * - core/Prefs.kt: "제외하기"/"오늘 하루 쉬기"는 Prefs를 직접 갱신(Activity 없이 Context만
+ *   있어도 되는 함수들만 호출 — 오버레이는 Activity 밖에서 뜨기 때문).
  * - core/TriggerGate.kt / service/NagService.kt: TriggerGate가 고른 후보를 show()에 넘긴다.
  *
  * [간접 연결]
@@ -314,9 +316,12 @@ object OverlayPresenter {
             launchIntent?.let { context.startActivity(it) }
         }
 
-        card.findViewById<Button>(R.id.actionMuteToday).setOnClickListener {
+        card.findViewById<Button>(R.id.actionPauseToday).setOnClickListener {
             hide(context)
-            Prefs(context).muteUntilMidnight(targetPackage)
+            Prefs(context).pauseUntilMidnight()
+            // 이 앱 화면을 열지 않고 오버레이에서만 끝나는 액션이라, 설정 화면의 "쉬는 중"
+            // 표시처럼 바로 확인할 방법이 없다 — 그래서 토스트로 즉시 확인시켜준다.
+            Toast.makeText(context, "오늘은 조용히 할게요 — 자정에 다시 시작해요", Toast.LENGTH_SHORT).show()
         }
 
         card.findViewById<Button>(R.id.actionExclude).setOnClickListener {

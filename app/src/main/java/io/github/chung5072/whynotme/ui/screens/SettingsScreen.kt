@@ -33,6 +33,7 @@ import io.github.chung5072.whynotme.ui.theme.NagSurfaceVariant
 import io.github.chung5072.whynotme.ui.theme.NagTextMuted
 import io.github.chung5072.whynotme.ui.theme.NagTextSecondary
 import io.github.chung5072.whynotme.ui.theme.NagWarning
+import io.github.chung5072.whynotme.ui.theme.neutralButtonColors
 
 /**
  * 앱의 메인 화면. 켜짐/꺼짐 전체 스위치, 오늘의 삐짐 통계, 권한 상태, 알림 빈도, 앱 목록
@@ -77,6 +78,7 @@ fun SettingsScreen(
     phraseCount: Int,
     onNavigatePhrases: () -> Unit,
     onPause: () -> Unit,
+    onPauseToday: () -> Unit,
     onTestOverlay: () -> Unit,
     devModeUnlocked: Boolean,
     onNagCardTap: () -> Unit,
@@ -233,11 +235,21 @@ fun SettingsScreen(
         }
 
         item {
-            Button(
-                onClick = onPause,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = NagSurfaceVariant, contentColor = MaterialTheme.colorScheme.onBackground),
-            ) { Text("1시간 쉬기") }
+            // "1시간 쉬기"와 "오늘 하루 쉬기"는 둘 다 core/Prefs.kt의 pauseUntilMillis 하나를
+            // 다르게 세팅할 뿐이라(지금+1시간 vs 오늘 자정), 같은 자리에 나란히 둔다 —
+            // AppSelectionScreens.kt의 SelectAllRow와 같은 "선택지 두 개를 좌우로" 패턴.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = onPause,
+                    modifier = Modifier.weight(1f),
+                    colors = neutralButtonColors(),
+                ) { Text("1시간 쉬기") }
+                Button(
+                    onClick = onPauseToday,
+                    modifier = Modifier.weight(1f),
+                    colors = neutralButtonColors(),
+                ) { Text("오늘 하루 쉬기") }
+            }
         }
 
         if (devModeUnlocked) {
@@ -256,7 +268,7 @@ fun SettingsScreen(
                 Button(
                     onClick = onTestOverlay,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = NagSurfaceVariant, contentColor = MaterialTheme.colorScheme.onBackground),
+                    colors = neutralButtonColors(),
                 ) { Text("오버레이 테스트 (확률/쿨다운 무시하고 강제 실행)") }
             }
             item {
