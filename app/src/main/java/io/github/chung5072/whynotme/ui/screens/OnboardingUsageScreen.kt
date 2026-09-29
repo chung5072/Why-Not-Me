@@ -29,6 +29,9 @@ import io.github.chung5072.whynotme.ui.theme.accentButtonColors
  *
  * [직접 연결] core/Permissions.kt의 usageAccessSettingsIntent()를 MainActivity가 실행하도록
  * onOpenSettings 콜백으로 넘긴다 (OnboardingOverlayScreen과 동일한 패턴).
+ *
+ * [간접 연결] 이 권한까지 확인되는 순간 MainActivity.AppRoot가 감시를 자동으로 켠다
+ * (2026-09-29) — 그래서 하단에 "설정을 마치면 자동으로 시작된다"는 안내를 추가했다.
  */
 @Composable
 fun OnboardingUsageScreen(onOpenSettings: () -> Unit) {
@@ -66,6 +69,12 @@ fun OnboardingUsageScreen(onOpenSettings: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 colors = accentButtonColors(),
             ) { Text("동의하고 설정 열기") }
+            Text(
+                "설정을 마치면 감시가 자동으로 시작돼요. 앱 상단의 스위치로 언제든 껐다 켤 수 있어요.",
+                style = MaterialTheme.typography.labelSmall,
+                color = NagTextMuted,
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            )
         },
     )
 }

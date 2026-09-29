@@ -62,6 +62,13 @@ import io.github.chung5072.whynotme.ui.theme.accentTextFieldColors
  * CandidateExcludedAppsScreen은 "일부러 안 쓰는 앱"이라는 맥락상 자동 감지할 좋은 규칙이
  * 없어서 전체 목록 하나만 보여준다. 앱이 많으면 스크롤로 하나씩 찾기 번거롭다는 피드백으로
  * 검색창(SearchField)을 추가했다 — 라벨(앱 이름) 기준 대소문자 무시 부분 일치.
+ *
+ * [정렬 + 선택 항목 우선 표시 (2026-09-29)] 이미 선택(켜둔)한 앱은 정렬 방향과 무관하게
+ * 항상 그 목록(HiddenAppsScreen의 "자동으로 걸러진 앱"/"설치된 앱" 두 그룹 각각, 또는
+ * CandidateExcludedAppsScreen의 단일 목록) 맨 위에 온다 — sortedWithSelectedFirst() 참고.
+ * 정렬 자체(이름 오름차순/내림차순)는 검색창 옆 버튼으로 전환하며, 그룹마다 독립적으로
+ * 적용된다(선택 우선순위는 공통, 정렬 방향은 그 안에서만 적용). InstalledApp에는 사용 빈도
+ * 데이터가 없어서 이름순 말고 다른 정렬 기준은 아직 없다.
  */
 @Composable
 fun HiddenAppsScreen(
@@ -72,10 +79,13 @@ fun HiddenAppsScreen(
     onDeselectAll: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var sortDescending by remember { mutableStateOf(false) }
     val filtered = remember(apps, query) {
         if (query.isBlank()) apps else apps.filter { it.label.contains(query, ignoreCase = true) }
     }
-    val (sensitive, others) = filtered.partition { it.isLikelySensitive }
+    val (sensitiveRaw, othersRaw) = filtered.partition { it.isLikelySensitive }
+    val sensitive = sortedWithSelectedFirst(sensitiveRaw, selected, sortDescending)
+    val others = sortedWithSelectedFirst(othersRaw, selected, sortDescending)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -88,7 +98,14 @@ fun HiddenAppsScreen(
                 color = NagTextSecondary,
             )
         }
-        item { SearchField(query, onQueryChange = { query = it }) }
+        item {
+            SearchField(
+                query,
+                onQueryChange = { query = it },
+                sortDescending = sortDescending,
+                onToggleSort = { sortDescending = !sortDescending },
+            )
+        }
         item { SelectAllRow(onSelectAll, onDeselectAll) }
         item {
             Row(
@@ -134,9 +151,11 @@ fun CandidateExcludedAppsScreen(
     onDeselectAll: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var sortDescending by remember { mutableStateOf(false) }
     val filtered = remember(apps, query) {
         if (query.isBlank()) apps else apps.filter { it.label.contains(query, ignoreCase = true) }
     }
+    val sorted = sortedWithSelectedFirst(filtered, selected, sortDescending)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -149,29 +168,69 @@ fun CandidateExcludedAppsScreen(
                 color = NagTextSecondary,
             )
         }
-        item { SearchField(query, onQueryChange = { query = it }) }
+        item {
+            SearchField(
+                query,
+                onQueryChange = { query = it },
+                sortDescending = sortDescending,
+                onToggleSort = { sortDescending = !sortDescending },
+            )
+        }
         item { SelectAllRow(onSelectAll, onDeselectAll) }
-        item { Text("설치된 앱 · ${filtered.size}", style = MaterialTheme.typography.labelMedium, color = NagTextMuted) }
-        items(filtered, key = { it.packageName }) { app ->
+        item { Text("설치된 앱 · ${sorted.size}", style = MaterialTheme.typography.labelMedium, color = NagTextMuted) }
+        items(sorted, key = { it.packageName }) { app ->
             AppToggleRow(app, selected.contains(app.packageName), onToggle)
         }
-        if (filtered.isEmpty()) {
+        if (sorted.isEmpty()) {
             item { NoSearchResults() }
         }
     }
 }
 
+/**
+ * 선택된 앱을 정렬 방향과 무관하게 항상 앞에 오게 하고, 그 안에서는(선택된 것끼리, 선택
+ * 안 된 것끼리) 각각 이름 기준으로 정렬한다. InstalledApp에 사용 빈도 데이터가 없어서
+ * 지금은 이름순만 지원한다.
+ */
+private fun sortedWithSelectedFirst(
+    apps: List<InstalledApp>,
+    selected: Set<String>,
+    descending: Boolean,
+): List<InstalledApp> {
+    val byName = compareBy<InstalledApp> { it.label.lowercase() }
+    val comparator = if (descending) byName.reversed() else byName
+    val (chosen, rest) = apps.partition { it.packageName in selected }
+    return chosen.sortedWith(comparator) + rest.sortedWith(comparator)
+}
+
 @Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    sortDescending: Boolean,
+    onToggleSort: () -> Unit,
+) {
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("앱 이름으로 찾기") },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        colors = accentTextFieldColors(),
-    )
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("앱 이름으로 찾기") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            colors = accentTextFieldColors(),
+        )
+        // 선택된 앱은 이 정렬과 무관하게 항상 위(sortedWithSelectedFirst) — 이 버튼은 그
+        // 안에서(선택끼리, 미선택끼리) 이름 오름/내림차순만 바꾼다.
+        Button(
+            onClick = onToggleSort,
+            colors = ButtonDefaults.buttonColors(containerColor = NagSurfaceVariant, contentColor = NagTextSecondary),
+        ) { Text(if (sortDescending) "이름 ↓" else "이름 ↑") }
+    }
 }
 
 @Composable

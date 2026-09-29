@@ -55,7 +55,10 @@ import kotlin.random.Random
  *
  * [간접 연결]
  * - core/Permissions.kt: hasOverlayPermission()이 false인 상태로 show()를 부르면
- *   WindowManager.addView()가 SecurityException을 던진다. 호출부가 미리 확인해야 한다.
+ *   WindowManager.addView()가 SecurityException을 던진다. 호출부(SettingsViewModel의 활성화
+ *   가드)가 미리 확인해서 애초에 이 상태를 안 만드는 게 정석이지만, 혹시 뚫고 들어와도
+ *   앱이 죽지 않도록 addView()를 runCatching으로 감싸 방어했다(2026-09-29, 실기기에서
+ *   "앱이 중지되었습니다" 크래시로 실제 발생 확인).
  *
  * [동작 과정 — show()가 부르는 순서]
  * 0. NagService가 evaluate()에서 결정이 나오는 즉시(1~2초 지연 걸기 전에) reserveIfFree()로
@@ -76,6 +79,8 @@ import kotlin.random.Random
  *    onClickListener가 진행 중인 시퀀스 코루틴(dismissJob)을 취소하고 showActions()로 바꾼다.
  */
 object OverlayPresenter {
+
+    private const val TAG = "OverlayPresenter"
 
     @Volatile private var currentView: View? = null
     @Volatile private var reserved = false
@@ -131,7 +136,16 @@ object OverlayPresenter {
         params.y = 0
 
         val windowManager = context.windowManager()
-        windowManager.addView(root, params)
+        val added = runCatching { windowManager.addView(root, params) }
+        if (added.isFailure) {
+            // 오버레이 권한이 실제로는 없는 상태(설정에서 나중에 꺼졌거나, 활성화 가드를
+            // 뚫고 들어온 경우)에서 addView()가 SecurityException을 던지면, 이 함수를 부른
+            // NagService의 코루틴이 그대로 죽으면서 앱 전체가 크래시났다(실제로 겪음). 여기서
+            // 잡아서 조용히 포기한다 — reserved는 이미 위에서 false로 돌려놨으니 자리만 안
+            // 잡고 끝내면 다음 오버레이 시도를 막지 않는다.
+            android.util.Log.w(TAG, "오버레이 addView 실패, 포기함", added.exceptionOrNull())
+            return
+        }
         currentView = root
 
         root.post {
@@ -303,8 +317,10 @@ object OverlayPresenter {
         val inflater = LayoutInflater.from(context)
         val card = inflater.inflate(R.layout.overlay_actions, null)
 
-        card.findViewById<TextView>(R.id.actionsTitle).text = message
-        card.findViewById<TextView>(R.id.actionsSubtitle).text = targetPackage
+        // 제목은 말풍선 문구("흥"/"두고보자" 등)가 아니라 앱 이름으로 바꿨다 — 문구가 제목처럼
+        // 크게 뜨니 "이게 무슨 뜻이지" 헷갈린다는 피드백(2026-09-29) 반영. 문구는 부제로 내림.
+        card.findViewById<TextView>(R.id.actionsTitle).text = appLabel(context, targetPackage)
+        card.findViewById<TextView>(R.id.actionsSubtitle).text = message
         setAppIcon(card.findViewById(R.id.actionsIcon), context, targetPackage)
 
         card.findViewById<ImageButton>(R.id.actionsClose).setOnClickListener { hide(context) }
@@ -334,8 +350,9 @@ object OverlayPresenter {
             x = 0
             y = 200
         }
-        context.windowManager().addView(card, params)
-        currentView = card
+        runCatching { context.windowManager().addView(card, params) }
+            .onSuccess { currentView = card }
+            .onFailure { android.util.Log.w(TAG, "액션 카드 addView 실패, 포기함", it) }
     }
 
     private fun setAppIcon(iconView: ImageView?, context: Context, packageName: String) {
@@ -344,6 +361,12 @@ object OverlayPresenter {
             iconView.setImageDrawable(context.packageManager.getApplicationIcon(packageName))
         }
     }
+
+    /** targetPackage의 화면에 보이는 앱 이름(런처 라벨). 못 찾으면 패키지명 그대로 보여준다. */
+    private fun appLabel(context: Context, packageName: String): String = runCatching {
+        val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
+        context.packageManager.getApplicationLabel(appInfo).toString()
+    }.getOrDefault(packageName)
 
     private fun Context.windowManager(): WindowManager =
         getSystemService(Context.WINDOW_SERVICE) as WindowManager

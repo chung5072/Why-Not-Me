@@ -3,6 +3,7 @@ package io.github.chung5072.whynotme.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.chung5072.whynotme.core.Permissions
 import io.github.chung5072.whynotme.core.Phrases
 import io.github.chung5072.whynotme.core.Prefs
 import io.github.chung5072.whynotme.core.TriggerGate
@@ -34,6 +35,10 @@ data class SettingsUiState(
     val phraseCount: Int = 0,
     val devModeUnlocked: Boolean = false,
     val nextTriggerLabel: String? = null,
+    /** null이면 정상. 값이 있으면 그 이름의 권한이 없어서 방금 켜기 시도가 막혔다는 뜻 —
+     * SettingsScreen이 스위치 밑에 경고로 보여준다(2026-09-29, 활성화 안 됐는데 이유를
+     * 몰라 헤맸다는 피드백). */
+    val activationBlockedReason: String? = null,
 )
 
 /**
@@ -111,8 +116,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * 다른 화면(앱 목록/문구 고르기)을 다녀온 뒤 이 화면에 돌아왔을 때 숫자가 바로 맞아야
      * 해서, "화면에 돌아올 때만 갱신" 같은 별도 훅 없이 그냥 매초 갱신에 얹었다. */
     private fun refresh() {
-        _uiState.update {
-            it.copy(
+        _uiState.update { current ->
+            current.copy(
                 serviceRunning = NagService.isRunning,
                 todayNagCount = prefs.todayNagCount,
                 nagCount = prefs.nagCount,
@@ -122,6 +127,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 candidateExcludedCount = prefs.candidateExcludedPackages.size,
                 phraseCount = Phrases.pool(prefs).size,
                 nextTriggerLabel = nextTriggerLabel(),
+                // 권한을 그새 다 갖췄으면 경고를 지운다(다시 안 눌러도 사라짐) — 아직도
+                // 없으면 사용자가 못 볼 새 없이 사라지지 않게 그대로 둔다.
+                activationBlockedReason = if (missingRequiredPermissionLabel() == null) {
+                    null
+                } else {
+                    current.activationBlockedReason
+                },
             )
         }
     }
@@ -132,10 +144,37 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         null
     }
 
+    /**
+     * 오버레이 표시(SYSTEM_ALERT_WINDOW)와 사용정보 접근 둘 중 하나라도 없으면 그 이름을
+     * 돌려준다 — 이 둘이 없으면 서비스를 켜봐야 오버레이가 아예 안 뜨거나(전자, 예전엔 여기서
+     * 크래시까지 났었다 — overlay/OverlayPresenter.kt 참고) 후보를 못 찾아서(후자) 아무 일도
+     * 안 일어난다. 알림/배터리 최적화는 없어도 핵심 기능이 죽지 않아서 여기서는 안 막는다.
+     */
+    private fun missingRequiredPermissionLabel(): String? {
+        val context = getApplication<Application>()
+        return when {
+            !Permissions.hasOverlayPermission(context) -> "다른 앱 위에 표시"
+            !Permissions.hasUsageAccess(context) -> "사용 정보 접근"
+            else -> null
+        }
+    }
+
+    /**
+     * 켤 때만 위 두 권한을 확인한다 — "하나라도 권한이 없으면 활성화가 안 되던데 왜 그런지
+     * 모르겠다"는 피드백(2026-09-29) 반영. 막히면 실제로는 아무것도 켜지 않고
+     * activationBlockedReason만 채워서 SettingsScreen이 이유를 보여주게 한다.
+     */
     fun setServiceRunning(running: Boolean) {
+        if (running) {
+            val missing = missingRequiredPermissionLabel()
+            if (missing != null) {
+                _uiState.update { it.copy(activationBlockedReason = missing) }
+                return
+            }
+        }
         prefs.desiredServiceRunning = running
         if (running) NagService.start(getApplication()) else NagService.stop(getApplication())
-        _uiState.update { it.copy(serviceRunning = running) }
+        _uiState.update { it.copy(serviceRunning = running, activationBlockedReason = null) }
     }
 
     fun setFrequency(frequency: String) {

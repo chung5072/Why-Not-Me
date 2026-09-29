@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.chung5072.whynotme.core.Permissions
 import io.github.chung5072.whynotme.core.Prefs
+import io.github.chung5072.whynotme.service.NagService
 import io.github.chung5072.whynotme.ui.screens.CandidateExcludedAppsScreen
 import io.github.chung5072.whynotme.ui.screens.HiddenAppsScreen
 import io.github.chung5072.whynotme.ui.screens.OnboardingIntroScreen
@@ -69,6 +70,9 @@ import io.github.chung5072.whynotme.viewmodel.SettingsViewModel
  * - viewmodel 폴더: 각 Route 컴포저블이 `viewModel()`로 얻어 상태/액션을 위임한다.
  * - ui/screens 폴더: 각 Route 컴포저블이 ViewModel의 상태와 콜백을 그대로 주입해서 실제 UI를 그린다.
  * - core/Permissions.kt, core/Prefs.kt: 온보딩 흐름과 권한 행 계산에 여전히 직접 쓰인다.
+ * - service/NagService.kt: 온보딩을 정상적으로 마치는 순간(필요 권한을 다 확인한 직후) 여기서
+ *   딱 한 번 start()를 직접 불러 자동으로 감시를 켠다(2026-09-29) — 그 뒤로는 SettingsViewModel이
+ *   이 서비스를 관리한다.
  *
  * [간접 연결] AndroidManifest.xml에 선언된 권한들 — 이 파일이 여는 각 설정 Intent가 실제로
  * 인식되려면 매니페스트 선언이 먼저 있어야 한다.
@@ -130,6 +134,14 @@ private fun AppRoot() {
             Screen.Onboarding2 -> if (Permissions.hasOverlayPermission(context)) currentScreen = Screen.Onboarding3
             Screen.Onboarding3 -> if (Permissions.hasUsageAccess(context)) {
                 prefs.onboardingCompleted = true
+                // 온보딩을 정상적으로 다 마쳤다는 건 여기 도달한 시점에 오버레이(Onboarding2가
+                // 이미 확인함)+사용정보 접근(방금 확인함) 권한이 둘 다 있다는 뜻이라, 활성화
+                // 스위치를 직접 켤 필요 없이 자동으로 감시를 시작한다 — "처음에 활성화를 안
+                // 켜서 왜 안 되는지 몰랐다"는 피드백(2026-09-29) 반영. "나중에 하기"로 건너뛴
+                // 경우는 권한이 없어 자동 시작 대상이 아니다(SettingsViewModel의 활성화
+                // 가드가 그때 막아준다).
+                prefs.desiredServiceRunning = true
+                NagService.start(context)
                 currentScreen = Screen.Settings
             }
             else -> {}
@@ -194,6 +206,7 @@ private fun SettingsRoute(
     SettingsScreen(
         serviceRunning = uiState.serviceRunning,
         onServiceRunningChange = viewModel::setServiceRunning,
+        activationBlockedReason = uiState.activationBlockedReason,
         todayNagCount = uiState.todayNagCount,
         nagCount = uiState.nagCount,
         transitionCount = uiState.transitionCount,

@@ -37,7 +37,7 @@ import io.github.chung5072.whynotme.ui.theme.neutralButtonColors
 
 /**
  * 앱의 메인 화면. 켜짐/꺼짐 전체 스위치, 오늘의 삐짐 통계, 권한 상태, 알림 빈도, 앱 목록
- * 관리 진입점, 문구 관리 진입점, 1시간 쉬기, 숨겨진 개발자 섹션을 한 화면에 모은다.
+ * 관리 진입점, 문구 관리 진입점, 1시간/오늘 하루 쉬기, 숨겨진 개발자 섹션을 한 화면에 모은다.
  *
  * [직접 연결]
  * - core/Permissions.kt: 4개 권한 상태를 읽어 체크리스트를 그린다(MainActivity가 만들어 넘김).
@@ -45,6 +45,12 @@ import io.github.chung5072.whynotme.ui.theme.neutralButtonColors
  *   `SettingsUiState`로 만들어 넘기고, 이 화면의 콜백(onFrequencyChange 등)은 그 ViewModel의
  *   함수를 그대로 참조한다(MainActivity.SettingsRoute가 연결). 이 화면 자체는 상태가 없다.
  * - service/NagService.kt: 상단 스위치가 start()/stop()을 직접 호출한다(ViewModel 경유).
+ *
+ * [활성화 카드 (2026-09-29)] 상단 스위치가 잘 안 보인다는 피드백으로, 켜짐/꺼짐에 따라 카드
+ * 배경색 전체가 바뀌게 했다(NagAccent ↔ NagSurfaceVariant) + 상태 문구를 같이 보여준다.
+ * activationBlockedReason이 있으면(오버레이/사용정보 권한 중 하나가 없어서 SettingsViewModel이
+ * 켜기를 거부한 경우) 그 이유를 카드 안에 경고로 보여준다 — "왜 활성화가 안 되는지 모르겠다"는
+ * 피드백 반영.
  *
  * [간접 연결] core/TriggerGate.kt가 오버레이를 띄울 때마다 Prefs.todayNagCount/nagCount를
  * 갱신하고, 그 값이 여기 카드에 표시된다. 상주 알림(NagService)도 같은 todayNagCount를
@@ -64,6 +70,7 @@ import io.github.chung5072.whynotme.ui.theme.neutralButtonColors
 fun SettingsScreen(
     serviceRunning: Boolean,
     onServiceRunningChange: (Boolean) -> Unit,
+    activationBlockedReason: String?,
     todayNagCount: Int,
     nagCount: Int,
     transitionCount: Int,
@@ -90,17 +97,53 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
+            // 켜짐/꺼짐에 따라 카드 배경색 전체가 바뀐다 — "활성화 스위치가 잘 안 보인다"는
+            // 피드백(2026-09-29, 지인들이 처음에 못 찾아서 왜 안 되냐고 물어봤다고 함)을
+            // 반영해, 작은 스위치 하나가 아니라 화면에서 제일 큰 색 블록으로 상태를 보여준다.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(if (serviceRunning) NagAccent else NagSurfaceVariant)
+                    .padding(16.dp),
             ) {
-                Text("나는 왜 안 써?", style = MaterialTheme.typography.headlineSmall)
-                Switch(
-                    checked = serviceRunning,
-                    onCheckedChange = onServiceRunningChange,
-                    colors = SwitchDefaults.colors(checkedTrackColor = NagAccent, checkedThumbColor = NagOnAccent),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column {
+                        Text(
+                            "나는 왜 안 써?",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = if (serviceRunning) NagOnAccent else MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            if (serviceRunning) "감시 켜짐 · 안 쓰는 앱이 나타나요" else "감시 꺼짐 · 스위치를 눌러 켜주세요",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (serviceRunning) FontWeight.Normal else FontWeight.Bold,
+                            color = if (serviceRunning) NagOnAccent.copy(alpha = 0.85f) else NagWarning,
+                        )
+                    }
+                    Switch(
+                        checked = serviceRunning,
+                        onCheckedChange = onServiceRunningChange,
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = NagOnAccent,
+                            checkedThumbColor = NagAccent,
+                            uncheckedThumbColor = NagTextSecondary,
+                            uncheckedTrackColor = NagBorder,
+                        ),
+                    )
+                }
+                if (activationBlockedReason != null) {
+                    Text(
+                        "⚠ \"$activationBlockedReason\" 권한이 없어서 아직 못 켰어요 — 아래 권한 목록에서 켜주세요.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (serviceRunning) NagOnAccent else NagWarning,
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
+                }
             }
         }
 
